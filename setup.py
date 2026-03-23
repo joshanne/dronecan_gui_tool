@@ -111,7 +111,7 @@ if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
 # Windows-specific options and hacks
 #
 if os.name == 'nt':
-    args.setdefault('install_requires', []).append('cx_Freeze ~= 6.1')
+    args.setdefault('install_requires', []).append('cx_Freeze >= 7.0')
 
 if ('bdist_msi' in sys.argv) or ('build_exe' in sys.argv):
     import cx_Freeze
@@ -181,7 +181,7 @@ if ('bdist_msi' in sys.argv) or ('build_exe' in sys.argv):
     }
     args['executables'] = [
         cx_Freeze.Executable(os.path.join('bin', PACKAGE_NAME),
-                             base='Win32GUI',
+                             base='gui',
                              icon='icons/logo.ico',
                              shortcut_name=HUMAN_FRIENDLY_NAME,
                              shortcut_dir='ProgramMenuFolder'),
