@@ -10,7 +10,7 @@
 #
 
 # Note: This version is incremented after the release has been made
-__version_tuple__ = 1, 2, 28
+__version_tuple__ = 1, 2, 29
 
 
 # Now try to import the generated version information and override the locally managed version info
