@@ -504,6 +504,22 @@ class MainWindow(QMainWindow):
             """
             self._node.can_driver.send(can_id, data, extended=extended)
 
+        def loopback(payload, source_node_id=0):
+            """
+            Args:
+                payload:    Payload of the message
+            Example:
+                # Construct payload
+                msg = dronecan.uavcan.equipment.power.CircuitStatus()
+                msg.circuit_id = 1
+                msg.voltage = 10
+                # Handle the message as if received from CAN
+                loopback(msg)
+            """
+            transfer = dronecan.transport.Transfer(source_node_id=source_node_id)
+            transfer.payload = payload
+            self._node._handler_dispatcher.call_handlers(transfer)
+
         return [
             InternalObjectDescriptor('can_iface_name', self._iface_name,
                                      'Name of the CAN bus interface'),
@@ -533,6 +549,8 @@ class MainWindow(QMainWindow):
                                      'Main window object, holds references to all business logic objects'),
             InternalObjectDescriptor('can_send', can_send,
                                      'Sends a raw CAN frame'),
+            InternalObjectDescriptor('loopback', loopback,
+                                     'Handles a constructed message as if received over CAN'),
         ]
 
     def _show_console_window(self):
