@@ -69,3 +69,7 @@ venv/
 
 # Build Artifacts
 dronecan_gui_tool/_version_generated.py
+
+# AppImage build
+AppDir/
+appimagetool-x86_64.AppImage
