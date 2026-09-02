@@ -15,6 +15,12 @@ import tempfile
 
 assert sys.version[0] == '3'
 
+def parse_load_modules(argv):
+    modules = [m.strip() for m in argv.split(",") if m.strip()]
+    if not modules:
+        return None
+    return modules
+
 from argparse import ArgumentParser
 parser = ArgumentParser(description='DroneCAN GUI tool')
 
@@ -30,6 +36,8 @@ parser.add_argument("--filtered", action='store_true', help="enable filtering of
 parser.add_argument("--target-system", help="set the targetted system", type=int, default=0)
 parser.add_argument("--source-system", help="set the source system", type=int, default=250)
 
+parser.add_argument("--load-module", type=parse_load_modules, nargs=1,  help="Comma-separated list of modules to load (e.g. mod1,mod2).") # exactly one argument required if flag is present
+
 args = parser.parse_args()
 
 #
@@ -42,12 +50,23 @@ else:
 
 logging.basicConfig(stream=sys.stderr, level=logging_level,
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
-
-from .version import __version__
+try:
+    from .version import __version_tuple__
+except ModuleNotFoundError:
+    __version_tuple__ = (0, 0, 0, "unknown")
+__version__ = [x for x in __version_tuple__ if isinstance(x, int)]
 if args.version:
-    v = '.'.join(map(str, __version__))
+    metadata_parts = [x for x in __version_tuple__ if isinstance(x, str)]
+    is_clean_release = len(metadata_parts) == 0
+    is_dirty = any(".d" in part for part in metadata_parts)
+    version_info = '.'.join(map(str, __version__))
+    metadata_info = '.'.join(map(str, metadata_parts))
     print("DroneCAN GUI Tool is an application for DroneCAN bus management and diagnostics")
-    print(f"DroneCAN GUI Tool Version: {v}")
+    print(f"DroneCAN GUI Tool Version: {version_info}")
+    if not is_clean_release:
+        print(f"Development Build: {metadata_info}")
+        if is_dirty:
+            print("Warning: Built from a dirty working tree!")
     sys.exit(0)
 
 log_file = tempfile.NamedTemporaryFile(mode='w', prefix='dronecan_gui_tool-', suffix='.log', delete=False)
@@ -75,6 +94,7 @@ if multiprocessing.get_start_method(allow_none=True) is None:
 #
 # Importing other stuff once the logging has been configured
 #
+from pathlib import Path
 from serial import SerialException
 
 import dronecan
@@ -103,13 +123,34 @@ from .widgets.about_window import AboutWindow
 from .widgets.can_adapter_control_panel import spawn_window as spawn_can_adapter_control_panel
 
 from .panels import PANELS
+from .panels import import_panel
 
+# Add the User ~/dronecan_gui_tool/plugins folder to the import path,
+# allowing for custom plugin modules to be loaded from there.
+plugins_dir = Path.home() / "dronecan_gui_tool" / "plugins"
+if plugins_dir.exists():
+    str_plugin_dir = str(plugins_dir)
+    if str_plugin_dir not in sys.path:
+        sys.path.insert(0, str_plugin_dir)
+
+EXT_PLUGINS = []
+modules = args.load_module[0] if args.load_module else []
+if len(modules) > 0:
+    for module in modules:
+        try:
+            panel = import_panel(module)
+            EXT_PLUGINS.append(panel)
+        except Exception as ex:
+            print(f"Unable to load {module}: {ex}")
+    print(f"Loaded {len(EXT_PLUGINS)} plugin modules!")
 
 NODE_NAME = 'org.dronecan.gui_tool'
 
 
 class MainWindow(QMainWindow):
     MAX_SUCCESSIVE_NODE_ERRORS = 1000
+    TRANSFER_ERROR_LOG_INTERVAL = 10        # Seconds between repeated logs of an identical transfer error
+    MAX_TRACKED_TRANSFER_ERRORS = 64        # Cap on distinct transfer-error messages tracked for throttling
 
     # noinspection PyTypeChecker,PyCallByClass,PyUnresolvedReferences
     def __init__(self, node, iface_name, iface_kwargs):
@@ -120,6 +161,8 @@ class MainWindow(QMainWindow):
 
         self._node = node
         self._successive_node_errors = 0
+        self._transfer_error_stats = {}     # Error text -> {'last_log': monotonic, 'suppressed': int}
+        self._make_frame_handling_resilient()
         self._iface_name = iface_name
 
         self._active_data_type_detector = ActiveDataTypeDetector(self._node)
@@ -211,6 +254,39 @@ class MainWindow(QMainWindow):
                 action.setShortcut(QKeySequence('Ctrl+Shift+%d' % (idx + 1)))
             action.triggered.connect(lambda state, panel=panel: panel.safe_spawn(self, self._node))
             panels_menu.addAction(action)
+
+        #
+        # External Modules menu
+        #
+        def get_or_create_submenu(parent_menu, menu_name):
+            """
+            Find a submenu with menu_name under parent_menu, or create it if not found.
+            """
+            for action in parent_menu.actions():
+                submenu = action.menu()
+                if submenu and submenu.title() == menu_name:
+                    return submenu
+            # Not found, create new submenu
+            return parent_menu.addMenu(menu_name)
+
+        if len(EXT_PLUGINS) > 0:
+            extern_modules_menu = self.menuBar().addMenu('P&lugins')
+            for idx, panel in enumerate(EXT_PLUGINS):
+                menu_path = getattr(panel, "menu_path", "")
+                path_parts = [p for p in menu_path.split("/") if p]
+
+                current_menu = extern_modules_menu
+                for part in path_parts:
+                    current_menu = get_or_create_submenu(current_menu, part)
+
+                action = QAction(panel.name, self)
+                icon = panel.get_icon()
+                if icon:
+                    action.setIcon(icon)
+                if idx < 9:
+                    action.setShortcut(QKeySequence(f'Ctrl+Shift+[,{(idx + 1)}'))
+                action.triggered.connect(lambda state, panel=panel: panel.safe_spawn(self, self._node))
+                current_menu.addAction(action)
 
         #
         # Help menu
@@ -504,6 +580,22 @@ class MainWindow(QMainWindow):
             """
             self._node.can_driver.send(can_id, data, extended=extended)
 
+        def loopback(payload, source_node_id=0):
+            """
+            Args:
+                payload:    Payload of the message
+            Example:
+                # Construct payload
+                msg = dronecan.uavcan.equipment.power.CircuitStatus()
+                msg.circuit_id = 1
+                msg.voltage = 10
+                # Handle the message as if received from CAN
+                loopback(msg)
+            """
+            transfer = dronecan.transport.Transfer(source_node_id=source_node_id)
+            transfer.payload = payload
+            self._node._handler_dispatcher.call_handlers(transfer)
+
         return [
             InternalObjectDescriptor('can_iface_name', self._iface_name,
                                      'Name of the CAN bus interface'),
@@ -533,6 +625,8 @@ class MainWindow(QMainWindow):
                                      'Main window object, holds references to all business logic objects'),
             InternalObjectDescriptor('can_send', can_send,
                                      'Sends a raw CAN frame'),
+            InternalObjectDescriptor('loopback', loopback,
+                                     'Handles a constructed message as if received over CAN'),
         ]
 
     def _show_console_window(self):
@@ -559,12 +653,42 @@ class MainWindow(QMainWindow):
         w.show()
         self._node_windows[node_id] = w
 
+    def _make_frame_handling_resilient(self):
+        # dronecan's Node.spin() drains the whole RX queue and *then* runs its scheduler -- periodic
+        # NodeStatus broadcasts, outstanding-request timeouts/retries, and the node monitor's 1 Hz
+        # stale-node sweep (node_monitor registers it via node.periodic). If a single frame fails to
+        # decode, Node._recv_frame -> Transfer.from_frames raises (e.g. an unrecognised data type ID
+        # from a node using DSDL we haven't loaded, while prototyping new messages). That exception
+        # aborts the rest of the drain AND skips the scheduler poll for that spin. A message broadcast
+        # at high rate then trips nearly every 10 ms spin, so the scheduler is starved and good frames
+        # queued behind the bad one are delayed -- nodes flap in and out of the monitor and the UI
+        # stalls. Catching it up in _spin_node is too late: the damage is already done inside spin().
+        #
+        # So we wrap _recv_frame to drop an undecodable transfer in place, letting spin() finish
+        # draining the queue and run its scheduler exactly as it would for clean traffic. The raw
+        # frames remain visible in the bus monitor regardless (it taps the driver directly).
+        original_recv_frame = self._node._recv_frame
+
+        def resilient_recv_frame(raw_frame):
+            try:
+                original_recv_frame(raw_frame)
+            except dronecan.transport.TransferError as ex:
+                self._report_transfer_error(ex)
+
+        self._node._recv_frame = resilient_recv_frame
+
     def _spin_node(self):
         # We're running the node in the GUI thread.
         # This is not great, but at the moment seems like other options are even worse.
         try:
             self._node.spin(0)
             self._successive_node_errors = 0
+        except dronecan.transport.TransferError as ex:
+            # Backstop only: undecodable transfers are normally dropped inside spin() by the
+            # _recv_frame wrapper installed in _make_frame_handling_resilient(). This catches a
+            # TransferError that might surface from any other path. Benign and per-transfer, so it
+            # must NOT count towards the fatal successive-error threshold below.
+            self._report_transfer_error(ex)
         except Exception as ex:
             self._successive_node_errors += 1
 
@@ -580,6 +704,34 @@ class MainWindow(QMainWindow):
 
             logger.error(msg, exc_info=True)
             self.statusBar().showMessage(msg, 3000)
+
+    def _report_transfer_error(self, ex):
+        # Called for every undecodable transfer -- potentially at hundreds of hertz -- so the common
+        # path must stay cheap. We touch the log and status bar at most once per
+        # TRANSFER_ERROR_LOG_INTERVAL seconds per distinct error, and otherwise just tally how many
+        # identical occurrences were suppressed in between.
+        text = str(ex)
+        now = time.monotonic()
+        stat = self._transfer_error_stats.get(text)
+        if stat is None:
+            # Bound memory in the pathological case of many distinct errors (e.g. CRC mismatches
+            # embed the varying payload bytes in their message text).
+            if len(self._transfer_error_stats) >= self.MAX_TRACKED_TRANSFER_ERRORS:
+                self._transfer_error_stats.clear()
+            stat = self._transfer_error_stats[text] = {'last_log': 0.0, 'suppressed': 0}
+
+        if now - stat['last_log'] >= self.TRANSFER_ERROR_LOG_INTERVAL:
+            if stat['suppressed']:
+                logger.warning('Ignoring undecodable transfer: %s (%d more suppressed in the last %.0f s)',
+                               text, stat['suppressed'], self.TRANSFER_ERROR_LOG_INTERVAL)
+            else:
+                logger.warning('Ignoring undecodable transfer: %s', text)
+            self.statusBar().showMessage('Ignoring undecodable transfer: %s' % text,
+                                         int(self.TRANSFER_ERROR_LOG_INTERVAL * 1000))
+            stat['last_log'] = now
+            stat['suppressed'] = 0
+        else:
+            stat['suppressed'] += 1
 
     def closeEvent(self, qcloseevent):
         self._plotter_manager.close()
