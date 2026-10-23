@@ -7,7 +7,7 @@
 #
 
 import dronecan
-from ..version import __version__
+from ..version import __version_string__
 from . import get_icon, get_app_icon
 from PyQt6.QtWidgets import QDialog, QTableWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, \
     QTableWidgetItem, QHeaderView
@@ -21,7 +21,7 @@ Cross-platform application for <a href="http://dronecan.org/">DroneCAN bus</a> m
 
 This application is distributed under the terms of the MIT software license. The source repository and the bug \
 tracker are located at <a href="https://github.com/DroneCAN/gui_tool">https://github.com/DroneCAN/gui_tool</a>.
-'''.format('.'.join(map(str, __version__)))).strip().replace('\n', '\n<br/>')
+'''.format(__version_string__)).strip().replace('\n', '\n<br/>')
 
 
 def _list_3rd_party():

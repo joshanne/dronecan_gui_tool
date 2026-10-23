@@ -23,10 +23,14 @@ SOURCE_DIR = os.path.abspath(os.path.dirname(__file__))
 # unique code so the package can be upgraded as an MSI
 upgrade_code = '{D5CD6E19-2545-32C7-A62A-4595B28BCDC3}'
 
-sys.path.append(os.path.join(SOURCE_DIR, PACKAGE_NAME))
-from version import __version__
-
 assert sys.version_info[0] == 3, 'Python 3 is required'
+
+# The version is derived from the git release tags by dronecan_gui_tool/version.py. It is written into
+# dronecan_gui_tool/_version.py, so that installed and frozen packages, and sdists, know their version.
+sys.path.insert(0, SOURCE_DIR)
+from dronecan_gui_tool import version as package_version  # noqa: E402
+with open(os.path.join(SOURCE_DIR, PACKAGE_NAME, '_version.py'), 'w') as f:
+    f.write(package_version.generated_module_source())
 
 with open("README.md", "r", encoding = "utf-8") as fh:
     long_description = fh.read()
@@ -36,7 +40,7 @@ with open("README.md", "r", encoding = "utf-8") as fh:
 #
 args = dict(
     name=PACKAGE_NAME,
-    version='.'.join(map(str, __version__)),
+    version=package_version.__version_string__,
     packages=find_packages(),
     install_requires=[
         'setuptools>=18.5',
@@ -114,6 +118,9 @@ if os.name == 'nt':
 
 if ('bdist_msi' in sys.argv) or ('build_exe' in sys.argv):
     import cx_Freeze
+
+    # MSI product versions must be numeric; the application itself reports the full version from _version.py
+    args['version'] = '.'.join(map(str, package_version.__version__))
 
     # cx_Freeze can't handle 3rd-party packages packed in .egg files, so we have to extract them for it
     dependency_eggs_to_unpack = [

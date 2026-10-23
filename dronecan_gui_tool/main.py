@@ -43,9 +43,9 @@ else:
 logging.basicConfig(stream=sys.stderr, level=logging_level,
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 
-from .version import __version__
+from .version import __version__, __version_string__
 if args.version:
-    v = '.'.join(map(str, __version__))
+    v = __version_string__
     print("DroneCAN GUI Tool is an application for DroneCAN bus management and diagnostics")
     print(f"DroneCAN GUI Tool Version: {v}")
     sys.exit(0)
