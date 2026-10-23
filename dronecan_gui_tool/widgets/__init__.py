@@ -8,6 +8,7 @@
 
 import os
 import re
+import time
 import collections
 import importlib.resources
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView, QApplication, QWidget, \
@@ -480,6 +481,8 @@ class SteppableSpinBox(QSpinBox):
 
 
 class RealtimeLogWidget(QWidget):
+    MAX_REDRAW_DURATION = 0.05
+
     def __init__(self, parent, started_by_default=False, pre_redraw_hook=None, max_rows=None, **table_options):
         """
         Args:
@@ -537,6 +540,12 @@ class RealtimeLogWidget(QWidget):
         self._queue = collections.deque()
         self._set_max_rows(max_rows)
 
+        # Items passed to show_items(), which are added in the background
+        self._items_to_show = collections.deque()
+        self._show_timer = QTimer(self)
+        self._show_timer.setInterval(0)
+        self._show_timer.timeout.connect(self._show_next_items)
+
         layout = QVBoxLayout(self)
 
         controls_layout = QHBoxLayout(self)
@@ -572,6 +581,7 @@ class RealtimeLogWidget(QWidget):
         self._table.search(*args, **kwargs)
 
     def _clear(self):
+        self._stop_showing_items()
         self._table.setRowCount(0)
         self._row_count.setText(str(self._table.rowCount()))
 
@@ -629,6 +639,41 @@ class RealtimeLogWidget(QWidget):
 
     def _on_start_button_clicked(self):
         self._pause.setChecked(False)
+        if self.started:
+            self._stop_showing_items()
+
+    def show_items(self, items):
+        """
+        Stops capturing, and replaces the contents of the table with the items, such as ones loaded from a file.
+        The items are added in the background; pressing start or clear cancels that.
+        """
+        self._start_button.setChecked(False)
+        self._pause.setChecked(False)
+        self._queue.clear()
+        self._clear()
+        if self._max_rows is not None:
+            items = items[-self._max_rows:]
+        self._items_to_show = collections.deque(items)
+        self._show_timer.start()
+
+    def _show_next_items(self):
+        # Adding the items in time-bounded batches keeps the UI responsive while many items are shown
+        self._table.setUpdatesEnabled(False)
+        deadline = time.monotonic() + self.MAX_REDRAW_DURATION
+        while self._items_to_show and time.monotonic() < deadline:
+            row = self._table.rowCount()
+            self._table.insertRow(row)
+            self._table.set_row(row, self._items_to_show.popleft())
+        self._trim_rows()
+        self._table.setUpdatesEnabled(True)
+        self._row_count.setText(str(self._table.rowCount()))
+        if not self._items_to_show:
+            self._show_timer.stop()
+            self._table.scrollToTop()
+
+    def _stop_showing_items(self):
+        self._show_timer.stop()
+        self._items_to_show.clear()
 
     def add_item_async(self, item):
         self._queue.append(item)
@@ -648,6 +693,10 @@ class RealtimeLogWidget(QWidget):
     @property
     def custom_area_layout(self):
         return self._custom_area_layout
+
+    @property
+    def max_rows(self):
+        return self._max_rows
 
 class PasswordEdit(QLineEdit):
     """Standalone Password Entry Widget with an optional visibility toggle"""

@@ -22,6 +22,7 @@ from .. import BasicTable, map_7bit_to_color, RealtimeLogWidget, get_monospace_f
     show_error, make_icon_button
 from .transfer_decoder import decode_transfer_from_frame
 from .pcapng_writer import PcapngCANWriter
+from .capture_reader import read_can_capture
 
 
 logger = getLogger(__name__)
@@ -127,6 +128,9 @@ class TimestampRenderer:
     FORMAT = '%H:%M:%S.%f'
 
     def __init__(self):
+        self._prev_ts = 0
+
+    def reset(self):
         self._prev_ts = 0
 
     def __call__(self, e):
@@ -346,6 +350,9 @@ class BusMonitorWindow(QMainWindow):
         self.setMinimumWidth(700)
         self.resize(800, 600)
 
+        # Capture files can be dropped onto the window to show their frames
+        self.setAcceptDrops(True)
+
         # Calling directly from the constructor gets you wrong size information
         # noinspection PyCallByClass,PyTypeChecker
         QTimer.singleShot(500, self._update_widget_sizes)
@@ -361,6 +368,53 @@ class BusMonitorWindow(QMainWindow):
     def closeEvent(self, qcloseevent):
         self._stop_logging_to_file()
         super(BusMonitorWindow, self).closeEvent(qcloseevent)
+
+    @staticmethod
+    def _dropped_file_path(mime_data):
+        if mime_data.hasUrls():
+            for url in mime_data.urls():
+                if url.isLocalFile():
+                    return url.toLocalFile()
+
+    def dragEnterEvent(self, qdragenterevent):
+        if self._dropped_file_path(qdragenterevent.mimeData()):
+            qdragenterevent.acceptProposedAction()
+
+    def dragMoveEvent(self, qdragmoveevent):
+        if self._dropped_file_path(qdragmoveevent.mimeData()):
+            qdragmoveevent.acceptProposedAction()
+
+    def dropEvent(self, qdropevent):
+        path = self._dropped_file_path(qdropevent.mimeData())
+        if path:
+            qdropevent.acceptProposedAction()
+            self.load_capture_file(path)
+
+    def load_capture_file(self, path):
+        """Stops capturing, and shows the CAN frames of a pcapng or pcap file, such as one written by Log To File."""
+        try:
+            items = list(read_can_capture(path))
+        except Exception as ex:
+            logger.error('Could not load capture file %r', path, exc_info=True)
+            show_error('Load capture file', 'Could not load %s' % os.path.basename(path), ex, self)
+            return
+
+        if not items:
+            flash(self, 'No CAN frames found in %s', os.path.basename(path), duration=10)
+            return
+
+        for column in COLUMNS:
+            if hasattr(column.render, 'reset'):
+                column.render.reset()
+        self._log_widget.show_items(items)
+
+        max_rows = self._log_widget.max_rows
+        if max_rows is not None and len(items) > max_rows:
+            flash(self, 'Loaded %d frames from %s; showing the last %d (Reached Row Limit)',
+                  len(items), os.path.basename(path), max_rows, duration=10)
+        else:
+            flash(self, 'Loaded %d frames from %s', len(items), os.path.basename(path), duration=10)
+        logger.info('Loaded %d frames from %r', len(items), path)
 
     def _on_log_to_file_clicked(self, checked):
         if checked:
