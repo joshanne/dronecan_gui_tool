@@ -12,8 +12,8 @@ import queue
 import importlib.resources
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView, QApplication, QWidget, \
     QComboBox, QCompleter, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox, QLineEdit
-from PyQt6.QtCore import Qt, QTimer, QStringListModel
-from PyQt6.QtGui import QColor, QKeySequence, QFont, QFontInfo, QIcon
+from PyQt6.QtCore import Qt, QTimer, QStringListModel, QRect, QPoint
+from PyQt6.QtGui import QColor, QKeySequence, QFont, QFontInfo, QIcon, QIconEngine, QPainter, QPalette, QPixmap
 from logging import getLogger
 import qtawesome
 from functools import partial
@@ -629,8 +629,42 @@ class PasswordEdit(QLineEdit):
             self.setEchoMode(QLineEdit.EchoMode.Password)
         self._update_icon()
 
+class _PaletteAwareIconEngine(QIconEngine):
+    """
+    qtawesome bakes the palette text colour into the icon when it is created, so icons don't follow
+    light/dark theme changes at runtime. This engine resolves the colour from the current palette on every paint.
+    """
+    def __init__(self, name):
+        super().__init__()
+        self._name = name
+        self._current_icon()    # Fail early on an invalid icon name rather than at paint time
+
+    def _current_icon(self):
+        palette = QApplication.palette()
+        color = palette.color(QPalette.ColorGroup.Active, QPalette.ColorRole.Text)
+        color_disabled = palette.color(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text)
+        # Pass colours as strings so qtawesome's cache key is stable (one cached icon per theme)
+        return qtawesome.icon(self._name,
+                              color=color.name(QColor.NameFormat.HexArgb),
+                              color_disabled=color_disabled.name(QColor.NameFormat.HexArgb))
+
+    def paint(self, painter, rect, mode, state):
+        self._current_icon().paint(painter, rect, Qt.AlignmentFlag.AlignCenter, mode, state)
+
+    def pixmap(self, size, mode, state):
+        pm = QPixmap(size)
+        pm.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pm)
+        self.paint(painter, QRect(QPoint(0, 0), size), mode, state)
+        painter.end()
+        return pm
+
+    def clone(self):
+        return _PaletteAwareIconEngine(self._name)
+
+
 def get_icon(name):
-    return qtawesome.icon(name)
+    return QIcon(_PaletteAwareIconEngine(name))
 
 
 def make_icon_button(icon_name, tool_tip, parent, checkable=False, checked=False, on_clicked=None, text=''):
