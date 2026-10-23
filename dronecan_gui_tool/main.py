@@ -7,6 +7,7 @@
 #
 
 import logging
+import collections
 import multiprocessing
 import os
 import sys
@@ -78,6 +79,7 @@ if multiprocessing.get_start_method(allow_none=True) is None:
 from serial import SerialException
 
 import dronecan
+from dronecan.driver import CANFrame
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QSplitter
 from PyQt6.QtGui import QKeySequence, QDesktopServices, QAction
@@ -504,6 +506,92 @@ class MainWindow(QMainWindow):
             """
             self._node.can_driver.send(can_id, data, extended=extended)
 
+        loopback_transfer_ids = collections.defaultdict(int)
+
+        def loopback(payload, interval=None, count=None, source_node_id=None, priority=None):
+            """
+            Injects messages into the receive path as if they were received from the bus, either once or periodically
+            in the background. The injected frames are seen by everything that listens to the bus: subscriptions,
+            handlers, the node monitor, the bus monitor, etc. Nothing is transmitted on the bus.
+            Example:
+                # Receive one message:
+                >>> loopback(dronecan.uavcan.equipment.actuator.Status(actuator_id=1, position=0.5))
+                # Receive 100 messages with 10 millisecond interval from node 42:
+                >>> loopback(dronecan.uavcan.protocol.NodeStatus(), interval=0.01, count=100, source_node_id=42)
+            Args:
+                payload:        DroneCAN message structure, e.g. dronecan.uavcan.equipment.actuator.Status()
+                interval:       Injection interval in seconds.
+                                If specified, the message will be re-injected in the background with this interval.
+                                If not specified (which is default), the message will be injected only once.
+                count:          Stop background injection when this number of messages has been injected.
+                                By default it is not set, meaning that the injection will continue indefinitely.
+                                Setting this value without interval is not allowed.
+                source_node_id: Node ID the message will appear to originate from; defaults to the local node ID.
+                priority:       Transfer priority; defaults to a very low priority.
+            Returns:    If periodic injection is configured, this function returns a handle that implements a method
+                        'remove()', which can be called to stop the background job.
+                        If no periodic injection is configured, this function returns nothing.
+            """
+            if isinstance(payload, dronecan.dsdl.CompoundType):
+                print('Interpreting the first argument as:', payload.full_name + '()')
+                payload = dronecan.TYPENAMES[payload.full_name]()
+
+            data_type = dronecan.get_dronecan_data_type(payload)
+            if data_type.kind != data_type.KIND_MESSAGE:
+                raise RuntimeError('Expected a message, got a different kind')
+
+            if interval is None and count is not None:
+                raise RuntimeError('Cannot setup background injection: interval is not set')
+
+            if source_node_id is None:
+                throw_if_anonymous()
+                source_node_id = self._node.node_id
+
+            if not 1 <= source_node_id <= 127:
+                raise ValueError('Invalid source node ID: %r' % source_node_id)
+
+            def do_loopback():
+                # Transfer IDs are tracked separately from the node's own, so that injection does not disturb them
+                key = (data_type.default_dtid, source_node_id)
+                transfer_id = loopback_transfer_ids[key]
+                loopback_transfer_ids[key] = (transfer_id + 1) & 0x1F
+
+                canfd = self._node._send_canfd
+                transfer = dronecan.transport.Transfer(payload=payload,
+                                                       source_node_id=source_node_id,
+                                                       transfer_id=transfer_id,
+                                                       transfer_priority=priority or default_transfer_priority,
+                                                       service_not_message=False,
+                                                       canfd=canfd)
+
+                # Replicating what the node does with a frame it has received from the driver
+                for frame in transfer.to_frames():
+                    raw_frame = CANFrame(frame.message_id, frame.bytes, True, canfd=canfd)
+                    self._node.can_driver._rx_hook(raw_frame)
+                    self._node._recv_frame(raw_frame)
+
+            do_loopback()
+
+            if interval is not None:
+                num_injected = 1            # The first was injected before the job was launched
+
+                def process_next():
+                    nonlocal num_injected
+                    try:
+                        do_loopback()
+                    except Exception:
+                        logger.error('Loopback injection failed, job cancelled', exc_info=True)
+                        timer_handle.remove()
+                    else:
+                        num_injected += 1
+                        if count is not None and num_injected >= count:
+                            logger.info('Loopback injector for %r has stopped', data_type.full_name)
+                            timer_handle.remove()
+
+                timer_handle = self._node.periodic(interval, process_next)
+                active_handles.append(timer_handle)
+                return timer_handle
+
         return [
             InternalObjectDescriptor('can_iface_name', self._iface_name,
                                      'Name of the CAN bus interface'),
@@ -533,6 +621,8 @@ class MainWindow(QMainWindow):
                                      'Main window object, holds references to all business logic objects'),
             InternalObjectDescriptor('can_send', can_send,
                                      'Sends a raw CAN frame'),
+            InternalObjectDescriptor('loopback', loopback,
+                                     'Injects DroneCAN messages into the receive path, once or periodically'),
         ]
 
     def _show_console_window(self):
