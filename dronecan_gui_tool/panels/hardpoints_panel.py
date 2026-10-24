@@ -6,8 +6,8 @@
 
 import dronecan
 from functools import partial
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QDialog, QSpinBox, QComboBox, QGroupBox, QLayout
-from PyQt6.QtCore import Qt
+from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QDialog, QSpinBox, QComboBox, QGroupBox, QLayout
+from qtpy.QtCore import Qt
 from logging import getLogger
 from ..widgets import make_icon_button, get_icon
 

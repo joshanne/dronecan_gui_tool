@@ -12,10 +12,10 @@ import time
 import threading
 import copy
 from .widgets import show_error, get_monospace_font, directory_selection
-from PyQt6.QtWidgets import QComboBox, QCompleter, QDialog, QFileDialog, QGroupBox, QHBoxLayout, QLabel, \
+from qtpy.QtWidgets import QComboBox, QCompleter, QDialog, QFileDialog, QGroupBox, QHBoxLayout, QLabel, \
     QLineEdit, QPushButton, QSpinBox, QVBoxLayout, QGridLayout, QCheckBox, QWidget
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QIntValidator
+from qtpy.QtCore import Qt, QTimer
+from qtpy.QtGui import QIntValidator
 from logging import getLogger
 from collections import OrderedDict
 from itertools import count
@@ -95,7 +95,7 @@ def list_ifaces():
         return out
     else:
         # Windows, Mac, whatever
-        from PyQt6 import QtSerialPort
+        from qtpy import QtSerialPort
 
         out = OrderedDict()
         for port in QtSerialPort.QSerialPortInfo.availablePorts():
@@ -323,7 +323,7 @@ def run_setup_window(icon, dsdl_path=None, config_baudrate=DEFAULT_BAUD_RATE, co
     layout.addWidget(can_group)
     layout.addWidget(dir_selection)
     layout.addWidget(ok)
-    layout.setSizeConstraint(layout.SetFixedSize)
+    layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
     win.setLayout(layout)
 
     QWidget.setTabOrder(combo, bus_number)

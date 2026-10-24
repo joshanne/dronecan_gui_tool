@@ -13,9 +13,9 @@ import json
 import zlib
 import base64
 import struct
-from PyQt6.QtWidgets import QGroupBox, QVBoxLayout, QHBoxLayout, QWidget, QCompleter, QFileDialog, QLabel
-from PyQt6.QtCore import QTimer, QDir
-from PyQt6.QtGui import QFileSystemModel
+from qtpy.QtWidgets import QGroupBox, QVBoxLayout, QHBoxLayout, QWidget, QCompleter, QFileDialog, QLabel
+from qtpy.QtCore import QTimer, QDir
+from qtpy.QtGui import QFileSystemModel
 from logging import getLogger
 from . import make_icon_button, CommitableComboBoxWithHistory, get_icon, flash, LabelWithIcon
 from ..paths import normalize_local_path

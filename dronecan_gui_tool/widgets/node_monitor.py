@@ -9,8 +9,8 @@
 import datetime
 import dronecan
 from . import BasicTable, get_monospace_font
-from PyQt6.QtWidgets import QGroupBox, QVBoxLayout, QHeaderView, QLabel
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from qtpy.QtWidgets import QGroupBox, QVBoxLayout, QHeaderView, QLabel
+from qtpy.QtCore import Qt, QTimer, Signal
 from logging import getLogger
 
 
@@ -78,7 +78,7 @@ class NodeTable(BasicTable):
                           lambda e: render_vendor_specific_status_code(e.status.vendor_specific_status_code))
     ]
 
-    info_requested = pyqtSignal([int])
+    info_requested = Signal(int)
 
     def __init__(self, parent, node):
         super(NodeTable, self).__init__(parent, self.COLUMNS, font=get_monospace_font())

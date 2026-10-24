@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QGroupBox, QLineEdit, QCompleter, QPushButton, QHBoxLayout, QFileDialog
-from PyQt6.QtCore import Qt, QDir
-from PyQt6.QtGui import QFileSystemModel
+from qtpy.QtWidgets import QGroupBox, QLineEdit, QCompleter, QPushButton, QHBoxLayout, QFileDialog
+from qtpy.QtCore import Qt, QDir
+from qtpy.QtGui import QFileSystemModel
 
 class DirectorySelectionWidget(QGroupBox):
     def __init__(self, parent, label, path=None, directory_only=False):

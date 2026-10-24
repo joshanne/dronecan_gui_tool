@@ -8,9 +8,9 @@
 
 import re
 import os
-from PyQt6.QtWidgets import QLabel, QDoubleSpinBox, QHBoxLayout, QVBoxLayout, QDialog, QTabWidget, QWidget, \
+from qtpy.QtWidgets import QLabel, QDoubleSpinBox, QHBoxLayout, QVBoxLayout, QDialog, QTabWidget, QWidget, \
     QCheckBox, QStatusBar, QHeaderView, QTableWidgetItem, QSpinBox, QLineEdit, QComboBox, QCompleter, QPlainTextEdit
-from PyQt6.QtCore import QTimer, Qt
+from qtpy.QtCore import QTimer, Qt
 from logging import getLogger
 import yaml
 

@@ -107,6 +107,17 @@ python3.5 -m pip install git+https://github.com/DroneCAN/gui_tool@master
 We would like to provide prebuilt application packages instead of the mess above.
 Contributions adding this capability would be welcome.
 
+## Qt bindings
+
+The application uses [QtPy](https://github.com/spyder-ide/qtpy), so it runs on either PyQt6 or PySide6.
+PyQt6 is used if it is installed, otherwise PySide6.
+To use PySide6 when both are installed, set the `QT_API` environment variable:
+
+```bash
+pip3 install PySide6
+QT_API=pyside6 dronecan_gui_tool
+```
+
 ## Development
 
 ### Releasing new version

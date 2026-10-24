@@ -8,9 +8,9 @@
 
 import dronecan
 from functools import partial
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QLabel, QDialog, \
+from qtpy.QtWidgets import QVBoxLayout, QWidget, QLabel, QDialog, \
     QPlainTextEdit, QPushButton, QLineEdit, QFileDialog, QComboBox, QHBoxLayout, QSpinBox
-from PyQt6.QtCore import QTimer, Qt
+from qtpy.QtCore import QTimer, Qt
 from logging import getLogger
 from ..widgets import make_icon_button, get_icon, get_monospace_font
 from ..widgets import table_display

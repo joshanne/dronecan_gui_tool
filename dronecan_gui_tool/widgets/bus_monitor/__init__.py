@@ -11,8 +11,8 @@ import sys
 import queue
 import logging
 import multiprocessing
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QTimer
+from qtpy.QtWidgets import QApplication
+from qtpy.QtCore import QTimer
 from .window import BusMonitorWindow
 
 logger = logging.getLogger(__name__)

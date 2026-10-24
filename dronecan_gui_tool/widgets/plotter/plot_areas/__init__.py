@@ -7,8 +7,8 @@
 #
 
 from collections import OrderedDict
-from PyQt6.QtGui import QColor
-from PyQt6.QtCore import Qt
+from qtpy.QtGui import QColor
+from qtpy.QtCore import Qt
 from pyqtgraph import mkPen, InfiniteLine
 
 

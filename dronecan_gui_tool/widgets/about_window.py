@@ -7,12 +7,13 @@
 #
 
 import dronecan
+import qtpy
 from ..version import __version__
 from . import get_icon, get_app_icon
-from PyQt6.QtWidgets import QDialog, QTableWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, \
+from qtpy.QtWidgets import QDialog, QTableWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, \
     QTableWidgetItem, QHeaderView
-from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import Qt, PYQT_VERSION_STR, QSize
+from qtpy.QtGui import QIcon
+from qtpy.QtCore import Qt, QSize
 
 
 ABOUT_TEXT = ('''
@@ -22,6 +23,12 @@ Cross-platform application for <a href="http://dronecan.org/">DroneCAN bus</a> m
 This application is distributed under the terms of the MIT software license. The source repository and the bug \
 tracker are located at <a href="https://github.com/DroneCAN/gui_tool">https://github.com/DroneCAN/gui_tool</a>.
 '''.format('.'.join(map(str, __version__)))).strip().replace('\n', '\n<br/>')
+
+
+def _qt_binding():
+    if qtpy.PYSIDE6:
+        return 'PySide6', qtpy.PYSIDE_VERSION, 'LGPLv3', 'https://doc.qt.io/qtforpython-6/'
+    return qtpy.API_NAME, qtpy.PYQT_VERSION, 'GPLv3', 'https://www.riverbankcomputing.com/software/pyqt/intro'
 
 
 def _list_3rd_party():
@@ -41,7 +48,8 @@ def _list_3rd_party():
 
     return [
         ('PyDroneCAN',  dronecan.__version__,   'MIT',      'http://dronecan.org/Implementations/Pydronecan'),
-        ('PyQt6',       PYQT_VERSION_STR,       'GPLv3',    'https://www.riverbankcomputing.com/software/pyqt/intro'),
+        _qt_binding(),
+        ('QtPy',        qtpy.__version__,       'MIT',      'https://github.com/spyder-ide/qtpy'),
         ('PyQtGraph',   pyqtgraph.__version__,  'MIT',      'http://www.pyqtgraph.org/'),
         ('QtAwesome',   qtawesome.__version__,  'MIT',      'https://github.com/spyder-ide/qtawesome'),
         ('QtConsole',   qtconsole_version,      'BSD',      'http://jupyter.org'),

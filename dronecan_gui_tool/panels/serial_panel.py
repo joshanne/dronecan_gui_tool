@@ -8,10 +8,10 @@
 
 import dronecan
 from functools import partial
-from PyQt6.QtWidgets import QGridLayout, QWidget, QLabel, QDialog, \
+from qtpy.QtWidgets import QGridLayout, QWidget, QLabel, QDialog, \
      QTableWidget, QVBoxLayout, QGroupBox, QTableWidgetItem, QLineEdit, \
      QComboBox, QHBoxLayout, QSpinBox, QCheckBox
-from PyQt6.QtCore import Qt, QTimer
+from qtpy.QtCore import Qt, QTimer
 from ..widgets import get_icon
 from . import rtcm3
 import time

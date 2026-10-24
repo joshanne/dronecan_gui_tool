@@ -7,8 +7,8 @@
 #
 
 import dronecan
-from PyQt6.QtWidgets import QGroupBox, QLabel, QSpinBox, QHBoxLayout, QCheckBox
-from PyQt6.QtCore import QTimer
+from qtpy.QtWidgets import QGroupBox, QLabel, QSpinBox, QHBoxLayout, QCheckBox
+from qtpy.QtCore import QTimer
 from logging import getLogger
 from . import make_icon_button, flash
 

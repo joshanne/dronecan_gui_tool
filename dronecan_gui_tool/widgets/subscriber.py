@@ -10,9 +10,9 @@ import time
 import dronecan
 import logging
 import queue
-from PyQt6.QtWidgets import QWidget, QDialog, QPlainTextEdit, QSpinBox, QHBoxLayout, QVBoxLayout, QComboBox, \
+from qtpy.QtWidgets import QWidget, QDialog, QPlainTextEdit, QSpinBox, QHBoxLayout, QVBoxLayout, QComboBox, \
     QCompleter, QLabel
-from PyQt6.QtCore import Qt, QTimer
+from qtpy.QtCore import Qt, QTimer
 from . import CommitableComboBoxWithHistory, make_icon_button, get_monospace_font, show_error, FilterBar
 
 

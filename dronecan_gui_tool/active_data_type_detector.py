@@ -8,15 +8,15 @@
 
 import logging
 import dronecan
-from PyQt6.QtCore import pyqtSignal, QObject
+from qtpy.QtCore import Signal, QObject
 
 
 logger = logging.getLogger(__name__)
 
 
 class ActiveDataTypeDetector(QObject):
-    message_types_updated = pyqtSignal([])
-    service_types_updated = pyqtSignal([])
+    message_types_updated = Signal()
+    service_types_updated = Signal()
 
     def __init__(self, node):
         super(ActiveDataTypeDetector, self).__init__()

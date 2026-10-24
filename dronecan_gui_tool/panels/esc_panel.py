@@ -8,12 +8,12 @@
 
 import dronecan
 from functools import partial
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QLabel, QDialog, QSlider, QSpinBox, QDoubleSpinBox, \
+from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QLabel, QDialog, QSlider, QSpinBox, QDoubleSpinBox, \
     QPlainTextEdit, QCheckBox
-from PyQt6.QtCore import QTimer, Qt
+from qtpy.QtCore import QTimer, Qt
 from logging import getLogger
 from ..widgets import make_icon_button, get_icon, get_monospace_font
-from PyQt6 import sip
+from qtpy.compat import isalive
 import time
 import math
 
@@ -232,7 +232,7 @@ class ESCPanel(QDialog):
     def _on_esc_status(self, msg):
         if msg.message.esc_index < len(self._sliders):
             sl = self._sliders[msg.message.esc_index] 
-            if sl and not sip.isdeleted(sl):
+            if sl and isalive(sl):
                 status = msg.message
                 temperature_celsius = status.temperature - 273.15
                 sl.update_status(status.esc_index, status.error_count, status.voltage, status.current,
@@ -248,7 +248,7 @@ class ESCPanel(QDialog):
         if escid is None:
             return
         sl = self._sliders[escid]
-        if sl and not sip.isdeleted(sl):
+        if sl and isalive(sl):
             sl.update_status(escid, None, None, None,
                              None, msg.message.rpm, None)
 
@@ -259,7 +259,7 @@ class ESCPanel(QDialog):
         if escid is None:
             return
         sl = self._sliders[escid]
-        if sl and not sip.isdeleted(sl):
+        if sl and isalive(sl):
             sl.update_status(escid, None, msg.message.input_voltage*0.1, msg.message.current*0.1,
                              msg.message.temperature, None, None)
             

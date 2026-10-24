@@ -7,10 +7,10 @@
 #
 
 import dronecan
-from PyQt6.QtWidgets import QGroupBox, QVBoxLayout, QHBoxLayout, QHeaderView, QPushButton, QFileDialog, \
+from qtpy.QtWidgets import QGroupBox, QVBoxLayout, QHBoxLayout, QHeaderView, QPushButton, QFileDialog, \
     QCompleter
-from PyQt6.QtCore import QTimer, QDir
-from PyQt6.QtGui import QFileSystemModel
+from qtpy.QtCore import QTimer, QDir
+from qtpy.QtGui import QFileSystemModel
 from logging import getLogger
 from . import BasicTable, get_monospace_font, get_icon, show_error, CommitableComboBoxWithHistory, make_icon_button
 

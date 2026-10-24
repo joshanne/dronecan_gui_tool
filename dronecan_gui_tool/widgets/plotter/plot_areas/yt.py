@@ -7,9 +7,9 @@
 #
 
 import logging
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
-from PyQt6.QtGui import QColor
-from PyQt6.QtCore import Qt
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from qtpy.QtGui import QColor
+from qtpy.QtCore import Qt
 from pyqtgraph import PlotWidget, mkPen
 from . import AbstractPlotArea, add_crosshair
 from ... import make_icon_button

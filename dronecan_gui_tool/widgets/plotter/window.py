@@ -9,9 +9,9 @@
 import time
 import logging
 from functools import partial
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout
-from PyQt6.QtCore import QTimer, Qt
-from PyQt6.QtGui import QKeySequence, QAction
+from qtpy.QtWidgets import QMainWindow, QWidget, QVBoxLayout
+from qtpy.QtCore import QTimer, Qt
+from qtpy.QtGui import QKeySequence, QAction
 from .. import get_app_icon, get_icon
 from .plot_areas import PLOT_AREAS
 from .plot_container import PlotContainerWidget

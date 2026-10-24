@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import dronecan
 import pytest
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QIcon
+from qtpy.QtWidgets import QApplication
+from qtpy.QtGui import QIcon
 
 from dronecan_gui_tool import paths
 from dronecan_gui_tool.widgets import file_server, node_properties

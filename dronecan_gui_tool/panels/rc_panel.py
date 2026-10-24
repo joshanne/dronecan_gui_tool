@@ -8,11 +8,11 @@
 
 import dronecan
 from functools import partial
-from PyQt6.QtWidgets import QWidget, QLabel, QDialog, \
+from qtpy.QtWidgets import QWidget, QLabel, QDialog, \
      QVBoxLayout, QHBoxLayout, QSlider, QSpinBox, QPushButton
-from PyQt6.QtGui import QPainter, QPen, QColor, QFont 
-from PyQt6.QtCore import Qt, pyqtSignal, QPointF, QRectF
-from PyQt6 import sip
+from qtpy.QtGui import QPainter, QPen, QColor, QFont 
+from qtpy.QtCore import Qt, Signal, QPointF, QRectF
+from qtpy.compat import isalive
 from ..widgets import get_icon
 
 __all__ = 'PANEL_NAME', 'spawn', 'get_icon'
@@ -291,7 +291,7 @@ class RcInfoWidget(QWidget):
                 self.sliders[i].update_channel_value(CHANNEL_CENTER_VALUE)
 
 class RcPanel(QDialog):
-    update_values_signal = pyqtSignal(list)
+    update_values_signal = Signal(list)
 
     def __init__(self, parent, node):
         super(RcPanel, self).__init__(parent)
@@ -336,7 +336,7 @@ class RcPanel(QDialog):
         rc_status.append(msg.message.status)
         rc_status.append(msg.message.quality)
         rc_status.append(msg.message.rcin)
-        if not sip.isdeleted(self):
+        if isalive(self):
             self.update_values_signal.emit(rc_status)
 
     def update_channel_values(self, rc_status):

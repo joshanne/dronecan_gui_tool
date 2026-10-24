@@ -6,9 +6,9 @@
 
 import dronecan
 from functools import partial
-from PyQt6.QtWidgets import QVBoxLayout, QLabel, QDialog, QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QBrush, QColor
+from qtpy.QtWidgets import QVBoxLayout, QLabel, QDialog, QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView
+from qtpy.QtCore import Qt, QTimer
+from qtpy.QtGui import QBrush, QColor
 from logging import getLogger
 from ..widgets import get_icon, get_monospace_font
 
